@@ -186,7 +186,7 @@ func render(board string, c echo.Context) error {
 func main() {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/render", func(c echo.Context) error {
 		board := c.QueryParam("board")
 
 		return render(board, c)
