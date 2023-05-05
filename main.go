@@ -137,7 +137,7 @@ func validate(board string) (*Board, error) {
 	return result, nil
 }
 
-func render(board string, c echo.Context) error {
+func render(board string, c echo.Context, white_bg, black_bg color.Color) error {
 	start := time.Now()
 
 	b, err := validate(board)
@@ -146,7 +146,7 @@ func render(board string, c echo.Context) error {
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, 512, 512))
-	draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
+	draw.Draw(img, img.Bounds(), image.NewUniform(white_bg), image.Point{}, draw.Src)
 
 	for row := 0; row < 8; row++ {
 		for column := 0; column < 8; column++ {
@@ -154,12 +154,7 @@ func render(board string, c echo.Context) error {
 			tileColour := (row + column) % 2
 
 			if tileColour == 0 {
-				draw.Draw(img, image.Rect(column*64, row*64, (column*64)+64, (row*64)+64), image.NewUniform(color.RGBA{
-					R: 0x4f,
-					G: 0x4f,
-					B: 0x4f,
-					A: 0xff,
-				}), image.Point{}, draw.Src)
+				draw.Draw(img, image.Rect(column*64, row*64, (column*64)+64, (row*64)+64), image.NewUniform(black_bg), image.Point{}, draw.Src)
 			}
 
 			if piece == Empty {
@@ -183,13 +178,70 @@ func render(board string, c echo.Context) error {
 	return nil
 }
 
+func parseColour(colour string) (color.Color, error) {
+	if len(colour) == 6 {
+		colour = colour + "ff"
+	}
+
+	if len(colour) != 8 {
+		return nil, fmt.Errorf("invalid colour")
+	}
+
+	colour_int, err := strconv.ParseUint(colour, 16, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid colour")
+	}
+
+	return color.RGBA{
+		R: uint8(colour_int >> 24),
+		G: uint8(colour_int >> 16),
+		B: uint8(colour_int >> 8),
+		A: uint8(colour_int),
+	}, nil
+}
+
 func main() {
 	e := echo.New()
 
 	e.GET("/render", func(c echo.Context) error {
 		board := c.QueryParam("board")
 
-		return render(board, c)
+		white_bg := c.QueryParam("white_bg")
+		black_bg := c.QueryParam("black_bg")
+
+		var while_col color.Color = color.RGBA{
+			R: 0xff,
+			G: 0xff,
+			B: 0xff,
+			A: 0xff,
+		}
+
+		if white_bg != "" {
+			col, err := parseColour(white_bg)
+			if err != nil {
+				return c.String(400, err.Error())
+			}
+
+			while_col = col
+		}
+
+		var black_col color.Color = color.RGBA{
+			R: 0x4f,
+			G: 0x4f,
+			B: 0x4f,
+			A: 0xff,
+		}
+
+		if black_bg != "" {
+			col, err := parseColour(black_bg)
+			if err != nil {
+				return c.String(400, err.Error())
+			}
+
+			black_col = col
+		}
+
+		return render(board, c, while_col, black_col)
 	})
 
 	bind := ":8080"
