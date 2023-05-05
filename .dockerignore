@@ -1,0 +1,6 @@
+*
+
+!/static
+!main.go
+!go.sum
+!go.mod
